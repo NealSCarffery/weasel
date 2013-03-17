@@ -5,6 +5,7 @@
 
 class WeaselTSF:
 	public ITfTextInputProcessor,
+	public ITfTextInputProcessorEx,
 	public ITfThreadMgrEventSink,
 	public ITfTextEditSink,
 	public ITfTextLayoutSink,
@@ -23,6 +24,8 @@ public:
 
 	/* ITfTextInputProcessor */
 	STDMETHODIMP Activate(ITfThreadMgr *pThreadMgr, TfClientId tfClientId);
+	/* ITfTextInputProcessorEx */
+	STDMETHODIMP ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags);
 	STDMETHODIMP Deactivate();
 
 	/* ITfThreadMgrEventSink */

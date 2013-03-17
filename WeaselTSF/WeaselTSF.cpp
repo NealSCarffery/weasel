@@ -110,6 +110,8 @@ STDAPI WeaselTSF::QueryInterface(REFIID riid, void **ppvObject)
 
 	if (IsEqualIID(riid, IID_IUnknown) || IsEqualIID(riid, IID_ITfTextInputProcessor))
 		*ppvObject = (ITfTextInputProcessor *) this;
+	else if (IsEqualIID(riid, IID_ITfTextInputProcessorEx))
+		*ppvObject = (ITfTextInputProcessorEx *) this;
 	else if (IsEqualIID(riid, IID_ITfThreadMgrEventSink))
 		*ppvObject = (ITfThreadMgrEventSink *) this;
 	else if (IsEqualIID(riid, IID_ITfTextEditSink))
@@ -149,6 +151,11 @@ STDAPI_(ULONG) WeaselTSF::Release()
 }
 
 STDAPI WeaselTSF::Activate(ITfThreadMgr *pThreadMgr, TfClientId tfClientId)
+{
+	return ActivateEx(pThreadMgr, tfClientId, 0);
+}
+
+STDAPI WeaselTSF::ActivateEx(ITfThreadMgr *pThreadMgr, TfClientId tfClientId, DWORD dwFlags)
 {
 	_EnsureServerConnected();
 
