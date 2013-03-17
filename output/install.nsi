@@ -3,7 +3,7 @@
 !include LogicLib.nsh
 !include x64.nsh
 
-!define WEASEL_VERSION 0.9.16
+!define WEASEL_VERSION 0.9.20
 !define WEASEL_BUILD ${WEASEL_VERSION}.1
 
 !define WEASEL_ROOT $INSTDIR\weasel-${WEASEL_VERSION}
@@ -18,7 +18,7 @@ VIProductVersion "${WEASEL_BUILD}"
 VIAddVersionKey /LANG=2052 "ProductName" "小狼毫"
 VIAddVersionKey /LANG=2052 "Comments" "Powered by RIME | 中州韻輸入法引擎"
 VIAddVersionKey /LANG=2052 "CompanyName" "式恕堂"
-VIAddVersionKey /LANG=2052 "LegalCopyright" "Copyleft RIME Developers 2012"
+VIAddVersionKey /LANG=2052 "LegalCopyright" "Copyleft RIME Developers"
 VIAddVersionKey /LANG=2052 "FileDescription" "小狼毫輸入法"
 VIAddVersionKey /LANG=2052 "FileVersion" "${WEASEL_VERSION}"
 
@@ -70,7 +70,8 @@ uninst:
   CopyFiles $R1\data\*.* $TEMP\weasel-backup
 
 call_uninstaller:
-  Exec '$R0 /S'
+  ExecWait '$R0 /S'
+  Sleep 800
 
 done:
 FunctionEnd
@@ -120,6 +121,7 @@ program_files:
   ; shared data files
   SetOutPath  $INSTDIR\data
   File "data\default.yaml"
+  File "data\symbols.yaml"
   File "data\weasel.yaml"
   File "data\essay.kct"
   File "data\*.schema.yaml"
@@ -165,10 +167,14 @@ SectionEnd
 Section "Start Menu Shortcuts"
 
   CreateDirectory "$SMPROGRAMS\小狼毫輸入法"
-  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\說明書.lnk" "$INSTDIR\README.txt"
-  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\輸入法設定.lnk" "$INSTDIR\WeaselDeployer.exe" "" "$INSTDIR\WeaselDeployer.exe" 0
-  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\用戶詞典管理.lnk" "$INSTDIR\WeaselDeployer.exe" "/dict" "$INSTDIR\WeaselDeployer.exe" 0
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫說明書.lnk" "$INSTDIR\README.txt"
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫輸入法設定.lnk" "$INSTDIR\WeaselDeployer.exe" "" "$SYSDIR\shell32.dll" 21
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫用戶詞典管理.lnk" "$INSTDIR\WeaselDeployer.exe" "/dict" "$SYSDIR\shell32.dll" 6
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫用戶資料同步.lnk" "$INSTDIR\WeaselDeployer.exe" "/sync" "$SYSDIR\shell32.dll" 26
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\重新部署小狼毫.lnk" "$INSTDIR\WeaselDeployer.exe" "/deploy" "$SYSDIR\shell32.dll" 144
   CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫算法服務.lnk" "$INSTDIR\WeaselServer.exe" "" "$INSTDIR\WeaselServer.exe" 0
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫用戶文件夾.lnk" "$INSTDIR\WeaselServer.exe" "/userdir" "$SYSDIR\shell32.dll" 126
+  CreateShortCut "$SMPROGRAMS\小狼毫輸入法\小狼毫程序文件夾.lnk" "$INSTDIR\WeaselServer.exe" "/weaseldir" "$SYSDIR\shell32.dll" 19
   CreateShortCut "$SMPROGRAMS\小狼毫輸入法\卸載小狼毫.lnk" "$INSTDIR\uninstall.exe" "" "$INSTDIR\uninstall.exe" 0
 
 SectionEnd

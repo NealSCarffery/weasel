@@ -6,7 +6,7 @@
 ; 擴展包標識
 !define PACKAGE_ID "weasel-expansion"
 ; 擴展包版本
-!define PACKAGE_VERSION 0.9.16
+!define PACKAGE_VERSION 0.9.17
 ; 必須補足 4 個整數
 !define PACKAGE_BUILD ${PACKAGE_VERSION}.0
 ; 擴展包名稱
@@ -22,7 +22,7 @@ VIProductVersion "${PACKAGE_BUILD}"
 VIAddVersionKey /LANG=2052 "ProductName" "${PACKAGE_NAME}"
 VIAddVersionKey /LANG=2052 "Comments" "Powered by RIME | 中州韻輸入法引擎"
 VIAddVersionKey /LANG=2052 "CompanyName" "式恕堂"
-VIAddVersionKey /LANG=2052 "LegalCopyright" "Copyleft RIME Developers 2012"
+VIAddVersionKey /LANG=2052 "LegalCopyright" "Copyleft RIME Developers"
 VIAddVersionKey /LANG=2052 "FileDescription" "${PACKAGE_NAME}"
 VIAddVersionKey /LANG=2052 "FileVersion" "${PACKAGE_VERSION}"
 

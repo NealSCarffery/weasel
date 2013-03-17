@@ -15,6 +15,7 @@
 #include <rime_api.h>
 #include <rime/deployer.h>
 #include <rime/service.h>
+#include <rime/lever/deployment_tasks.h>
 #include <rime/lever/switcher_settings.h>
 #pragma warning(default: 4996)
 #pragma warning(default: 4995)
@@ -50,7 +51,7 @@ int Configurator::Run(bool installing)
 
 	bool skip_switcher_settings = installing && !switcher_settings.IsFirstRun();
 	bool skip_ui_style_settings = installing && !ui_style_settings.IsFirstRun();
-	
+
 	(skip_switcher_settings || ConfigureSwitcher(&switcher_settings, &reconfigured)) &&
 		(skip_ui_style_settings || ConfigureUI(&ui_style_settings, &reconfigured));
 
@@ -151,8 +152,52 @@ int Configurator::DictManagement() {
 
 	{
 		rime::Deployer& deployer(rime::Service::instance().deployer());
+		rime::InstallationUpdate installation;
+		installation.Run(&deployer);  // setup user data sync dir
 		DictManagementDialog dlg(&deployer);
 		dlg.DoModal();
+	}
+
+	CloseHandle(hMutex);  // should be closed before resuming service.
+
+	if (client.Connect())
+	{
+		LOG(INFO) << "Resuming service.";
+		client.EndMaintenance();
+	}
+	return 0;
+}
+
+int Configurator::SyncUserData() {
+	HANDLE hMutex = CreateMutex(NULL, TRUE, L"WeaselDeployerMutex");
+	if (!hMutex)
+	{
+		LOG(ERROR) << "Error creating WeaselDeployerMutex.";
+		return 1;
+	}
+	if (GetLastError() == ERROR_ALREADY_EXISTS)
+	{
+		LOG(WARNING) << "another deployer process is running; aborting operation.";
+		CloseHandle(hMutex);
+		MessageBox(NULL, L"正在執行另一項部署任務，請稍候再試。", L"【小狼毫】", MB_OK | MB_ICONINFORMATION);
+		return 1;
+	}
+
+	weasel::Client client;
+	if (client.Connect())
+	{
+		LOG(INFO) << "Turning WeaselServer into maintenance mode.";
+		client.StartMaintenance();
+	}
+
+	{
+		rime::Deployer& deployer(rime::Service::instance().deployer());
+		if (!RimeSyncUserData())
+		{
+			LOG(ERROR) << "Error synching user data.";
+			return 1;
+		}
+		RimeJoinMaintenanceThread();
 	}
 
 	CloseHandle(hMutex);  // should be closed before resuming service.

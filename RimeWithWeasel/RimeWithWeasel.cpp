@@ -43,6 +43,7 @@ void RimeWithWeaselHandler::Initialize()
 		 return;
 	}
 	LOG(INFO) << "Initializing la rime.";
+	RimeSetNotificationHandler(&RimeWithWeaselHandler::OnNotify, this);
 	RimeTraits weasel_traits;
 	weasel_traits.shared_data_dir = weasel_shared_data_dir();
 	weasel_traits.user_data_dir = weasel_user_data_dir();
@@ -54,7 +55,8 @@ void RimeWithWeaselHandler::Initialize()
 	weasel_traits.distribution_code_name = WEASEL_CODE_NAME;
 	weasel_traits.distribution_version = WEASEL_VERSION;
 	RimeInitialize(&weasel_traits);
-	if (RimeStartMaintenanceOnWorkspaceChange())
+	Bool full_check = False;
+	if (RimeStartMaintenance(full_check))
 	{
 		m_disabled = true;
 	}
@@ -79,7 +81,7 @@ void RimeWithWeaselHandler::Finalize()
 UINT RimeWithWeaselHandler::FindSession(UINT session_id)
 {
 	if (m_disabled) return 0;
-	bool found = RimeFindSession(session_id);
+	Bool found = RimeFindSession(session_id);
 	DLOG(INFO) << "Find session: session_id = " << session_id << ", found = " << found;
 	return found ? session_id : 0;
 }
@@ -125,7 +127,7 @@ BOOL RimeWithWeaselHandler::ProcessKeyEvent(weasel::KeyEvent keyEvent, UINT sess
 	DLOG(INFO) << "Process key event: keycode = " << keyEvent.keycode << ", mask = " << keyEvent.mask
 		 << ", session_id = " << session_id;
 	if (m_disabled) return FALSE;
-	bool handled = RimeProcessKey(session_id, keyEvent.keycode, expand_ibus_modifier(keyEvent.mask));
+	Bool handled = RimeProcessKey(session_id, keyEvent.keycode, expand_ibus_modifier(keyEvent.mask));
 	_Respond(session_id, buffer);
 	_UpdateUI(session_id);
 	m_active_session = session_id;
@@ -158,6 +160,21 @@ void RimeWithWeaselHandler::UpdateInputPosition(RECT const& rc, UINT session_id)
 		_UpdateUI(session_id);
 		m_active_session = session_id;
 	}
+}
+
+std::string RimeWithWeaselHandler::m_message_type;
+std::string RimeWithWeaselHandler::m_message_value;
+
+void RimeWithWeaselHandler::OnNotify(void* context_object,
+	                                 uintptr_t session_id,
+                                     const char* message_type,
+                                     const char* message_value)
+{
+	// may be running in a thread when deploying rime
+	RimeWithWeaselHandler* self = reinterpret_cast<RimeWithWeaselHandler*>(context_object);
+	if (!self || !message_type || !message_value) return;
+	m_message_type = message_type;
+	m_message_value = message_value;
 }
 
 void RimeWithWeaselHandler::_ReadClientInfo(UINT session_id, LPWSTR buffer)
@@ -248,6 +265,7 @@ void RimeWithWeaselHandler::_UpdateUI(UINT session_id)
 	RIME_STRUCT_INIT(RimeStatus, status);
 	if (RimeGetStatus(session_id, &status))
 	{
+		weasel_status.schema_name = utf8towcs(status.schema_name);
 		weasel_status.ascii_mode = status.is_ascii_mode;
 		weasel_status.composing = status.is_composing;
 		weasel_status.disabled = status.is_disabled;
@@ -301,11 +319,52 @@ void RimeWithWeaselHandler::_UpdateUI(UINT session_id)
 		m_ui->Update(weasel_context, weasel_status);
 		m_ui->Show();
 	}
-	else
+	else if (!_ShowMessage(weasel_context, weasel_status))
 	{
 		m_ui->Hide();
 		m_ui->Update(weasel_context, weasel_status);
 	}
+
+	m_message_type.clear();
+	m_message_value.clear();
+}
+
+
+bool RimeWithWeaselHandler::_ShowMessage(weasel::Context& ctx, weasel::Status& status) {
+	// show as auxiliary string
+	std::wstring& tips(ctx.aux.str);
+	bool show_icon = false;
+	if (m_message_type == "deploy") {
+		if (m_message_type == "start")
+			tips = L"正在部署 RIME";
+		else if (m_message_value == "success")
+			tips = L"部署完成";
+		else if (m_message_value == "failure")
+			tips = L"有錯誤，請查看日誌 %TEMP%\rime.weasel.*.INFO";
+	}
+	else if (m_message_type == "schema") {
+		tips = /*L"【" + */status.schema_name/* + L"】"*/;
+	}
+	else if (m_message_type == "option") {
+		if (m_message_value == "!ascii_mode")
+			show_icon = true;  //tips = L"中文";
+		else if (m_message_value == "ascii_mode")
+			show_icon = true;  //tips = L"西文";
+		else if (m_message_value == "!full_shape")
+			tips = L"半角";
+		else if (m_message_value == "full_shape")
+			tips = L"全角";
+		else if (m_message_value == "!simplification")
+			tips = L"漢字";
+		else if (m_message_value == "simplification")
+			tips = L"汉字";
+	}
+	if (tips.empty() && !show_icon)
+		return m_ui->IsCountingDown();
+
+	m_ui->Update(ctx, status);
+	m_ui->ShowWithTimeout(1200 + 200 * tips.length());
+	return true;
 }
 
 bool RimeWithWeaselHandler::_Respond(UINT session_id, LPWSTR buffer)
@@ -415,6 +474,9 @@ static void _UpdateUIStyle(RimeConfig* config, weasel::UI* ui)
 	Bool inline_preedit = False;
 	RimeConfigGetBool(config, "style/inline_preedit", &inline_preedit);
 	style.inline_preedit = inline_preedit;
+	Bool display_tray_icon = False;
+	RimeConfigGetBool(config, "style/display_tray_icon", &display_tray_icon);
+	style.display_tray_icon = display_tray_icon;
 	Bool horizontal = False;
 	RimeConfigGetBool(config, "style/horizontal", &horizontal);
 	style.layout_type = horizontal ? weasel::LAYOUT_HORIZONTAL : weasel::LAYOUT_VERTICAL;
@@ -501,4 +563,3 @@ static void _LoadAppOptions(RimeConfig* config, AppOptionsByAppName& app_options
 	}
 	RimeConfigEnd(&app_iter);
 }
-
